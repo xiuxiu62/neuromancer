@@ -7,17 +7,17 @@
 #include <cmath>
 #include <cstdlib>
 
-#define MAX_NEURONS 1024
-#define MAX_CONNECTIONS 16
+#define MAX_NEURONS 2048
+#define MAX_SYNAPSES 16
 
 struct Network {
     GLuint program;
     GLuint neuron_buffer;
-    GLuint connection_buffer;
+    GLuint synapse_buffer;
     GLuint weight_buffer;
 
     f32 *neuron_data;
-    i32 *connection_data;
+    i32 *synapse_data;
     f32 *weight_data;
     usize neuron_count;
 };

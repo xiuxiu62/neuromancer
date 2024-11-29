@@ -3,8 +3,12 @@
 #include "neural_net.hpp"
 
 struct Renderer {
-    GLuint program;
-    GLuint vao;
+    GLuint neuron_program;
+    GLuint neuron_vao;
+
+    GLuint synapse_program;
+    GLuint synapse_vao;
+    GLuint synapse_buffer;
 };
 
 void renderer_init(Renderer &renderer);
