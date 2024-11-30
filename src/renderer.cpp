@@ -1,5 +1,6 @@
 #include "renderer.hpp"
 
+#include "core/logger.h"
 #include "neural_net.hpp"
 #include "shader.hpp"
 #include <urlmon.h>
@@ -22,8 +23,8 @@ void main() {
     float aspect = viewport.x / viewport.y;
     vec2 scale = vec2(1.0 / aspect, 1.0);
     
-    gl_Position = vec4(position * scale * 1.5, 0.0, 1.0);  // Scale down positions    
-    gl_PointSize = 10.0 * viewport.y / viewport.x;
+    gl_Position = vec4((position * scale * 1.5), 0.0, 1.0);  // Scale down positions    
+    gl_PointSize = 3.0 * viewport.y / viewport.x;
 }
 )";
 
@@ -73,13 +74,50 @@ const char *blur_vertex_shader_source = R"(
 layout(location = 0) in vec2 position;
 layout(location = 0) in vec2 texcoord;
 
-out vec2 v_texcoord;
+uniform sampler2D texture;
+uniform vec2 direction;
+uniform vec2 resolution;
 
 void main() {
-    v_texcoord = texcoord;
-    gl_Position = vec4(position, 0.0, 1.0);
+    vec2 texel = 1.0 / resolution;
+    vec3 color = vec3(0.0);
+    
+    // 9-tap Gaussian blur
+    color += texture(texture, v_texcoord + texel * direction * -4.0).rgb * 0.0162;
+    color += texture(texture, v_texcoord + texel * direction * -3.0).rgb * 0.0540;
+    color += texture(texture, v_texcoord + texel * direction * -2.0).rgb * 0.1216;
+    color += texture(texture, v_texcoord + texel * direction * -1.0).rgb * 0.1945;
+    color += texture(texture, v_texcoord).rgb * 0.2270;
+    color += texture(texture, v_texcoord + texel * direction * 1.0).rgb * 0.1945;
+    color += texture(texture, v_texcoord + texel * direction * 2.0).rgb * 0.1216;
+    color += texture(texture, v_texcoord + texel * direction * 3.0).rgb * 0.0540;
+    color += texture(texture, v_texcoord + texel * direction * 4.0).rgb * 0.0162;
+
+    fragColor = vec4(color, 1.0);
 }
 )";
+
+const char *bloom_fragment_shader = R"(
+#version 430
+
+in vec2 v_texcoord;
+out vec4 frag_color;
+
+uniform sampler2D origin;
+uniform sampler2D bloom;
+
+void main() {
+    vec3 original = texture(original, v_texcoord).rgb;
+    vec3 bloom = texture(bloom, v_texcoord).rgb;
+
+    vec3 final = original + bloom * 2.0;
+
+    fragColor = vec4(final, 1.0);
+}
+)";
+
+void create_framebuffers(Renderer &renderer, usize width, usize height) {
+}
 
 // In renderer.cpp, add line shaders:
 const char *synapse_vertex_shader_source = R"(
@@ -128,6 +166,8 @@ void renderer_update_synapse_buffer(const Renderer &renderer, const Network &net
                                     usize &synapse_count);
 
 void renderer_init(Renderer &renderer) {
+    glEnable(GL_PROGRAM_POINT_SIZE);
+
     // Neuron
     //
     // Create and compile shaders

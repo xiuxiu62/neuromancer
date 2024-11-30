@@ -72,7 +72,7 @@ void network_init(Network &net, usize neuron_count) {
     // Initialize neurons in a spiral pattern
     for (usize i = 0; i < neuron_count; i++) {
         f32 angle = i * 0.5f;
-        f32 radius = sqrt(i) * 20.0f;
+        f32 radius = sqrt((f32)i / neuron_count);
 
         // Position
         net.neuron_data[i * 4 + 0] = cos(angle) * radius;
@@ -140,6 +140,12 @@ void network_update(Network &net) {
 
     glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-    // Read back the updated data from GPU
-    glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, net.neuron_count * 4 * sizeof(f32), net.neuron_data);
+    // // Read back the updated data from GPU
+    // glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, net.neuron_count * 4 * sizeof(f32), net.neuron_data);
+
+    // Read back activation values
+    for (usize i = 0; i < net.neuron_count; i++) {
+        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, (i * 4 + 2) * sizeof(f32), sizeof(f32),
+                           &net.neuron_data[i * 4 + 2]);
+    }
 }
