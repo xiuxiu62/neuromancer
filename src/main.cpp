@@ -56,7 +56,7 @@ int main() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     Network network;
-    network_init(network, MAX_NEURONS);
+    network_init(network, MAX_NEURONS / 32);
 
     Renderer renderer;
     renderer_init(renderer);

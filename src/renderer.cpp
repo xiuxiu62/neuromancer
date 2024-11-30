@@ -23,8 +23,8 @@ void main() {
     float aspect = viewport.x / viewport.y;
     vec2 scale = vec2(1.0 / aspect, 1.0);
     
-    gl_Position = vec4((position * scale * 1.5), 0.0, 1.0);  // Scale down positions    
-    gl_PointSize = 3.0 * viewport.y / viewport.x;
+    gl_Position = vec4((position * scale), 0.0, 1.0);  // Scale down positions    
+    gl_PointSize = 7.5 * viewport.y / viewport.x;
 }
 )";
 
@@ -41,8 +41,9 @@ void main() {
     
     // Base color changes with activation
     vec3 baseColor = mix(        
-        vec3(0.1, 0.2, 0.4),  // Inactive state (darker blue)
-        vec3(0.4, 0.8, 1.0),  // Active state (bright blue)
+        vec3(0.1, 0.1, 0.2),  // Inactive state (darker blue)
+        // vec3(0.4, 0.8, 1.0),  // Active state (bright blue)
+        vec3(1.0, 1.0, 1.0),  // Active state (bright blue)
         v_activation    
     );
     
@@ -134,7 +135,7 @@ void main() {
     v_activation = activation;    
     float aspect = viewport.x / viewport.y;    
     vec2 scale = vec2(1.0 / aspect, 1.0);    
-    gl_Position = vec4(position * scale * 2.0, 0.0, 1.0);
+    gl_Position = vec4(position * scale, 0.0, 1.0);
     
     // v_activation = activation;
     // gl_Position = vec4(position * 0.01, 0.0, 1.0);  // Use same scale as neurons
@@ -149,12 +150,12 @@ out vec4 fragColor;
 
 void main() {
     vec3 color = mix(
-        vec3(0.05, 0.1, 0.15),  // Dim color for inactive connections
-        vec3(0.1, 0.2, 0.4),  // Brighter for active connections
+        vec3(0.2, 0.1, 0.05),  // Dim color for inactive connections
+        vec3(0.5, 0.2, 0.1),  // Brighter for active connections
         v_activation
     );
 
-    float alpha = 0.1 * v_activation;
+    float alpha = 0.2 * v_activation;
     
     fragColor = vec4(color, alpha);  // Semi-transparent lines
 }
@@ -312,11 +313,11 @@ void renderer_deinit(Renderer &renderer) {
 // }
 
 void renderer_render(const Renderer &renderer, const Network &network) {
-    // Then render neurons on top
-    renderer_render_neurons(renderer, network);
-
     // Render synapses first (they should be behind neurons)
     renderer_render_synapses(renderer, network);
+
+    // Then render neurons on top
+    renderer_render_neurons(renderer, network);
 }
 
 void renderer_render_neurons(const Renderer &renderer, const Network &network) {
