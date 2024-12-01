@@ -5,7 +5,6 @@
 #include "shader.hpp"
 #include <urlmon.h>
 
-// TODO: calculate the aspect ratio on framebuffer resize host side and pass that in
 const char *neuron_vertex_shader_source = R"(
 #version 430
 
@@ -24,7 +23,8 @@ void main() {
     vec2 scale = vec2(1.0 / aspect, 1.0);
     
     gl_Position = vec4((position * scale), 0.0, 1.0);  // Scale down positions    
-    gl_PointSize = 7.5 * viewport.y / viewport.x;
+    // gl_PointSize = 7.5 * viewport.y / viewport.x;
+    gl_PointSize = 10.0 * viewport.y / viewport.x;
 }
 )";
 
@@ -48,10 +48,50 @@ void main() {
     );
     
     float glow = exp(-r * 1.5);
-    vec3 finalColor = baseColor + vec3(0.3) * glow;
+    vec3 finalColor = baseColor + vec3(0.1) * glow;
     float alpha = min(1.0, glow + 0.2);
     
     fragColor = vec4(finalColor, alpha);
+}
+)";
+
+const char *synapse_vertex_shader_source = R"(
+#version 430
+
+layout(location = 0) in vec2 position;
+layout(location = 1) in float activation;
+
+uniform vec2 viewport;
+
+out float v_activation;
+
+void main() {
+    v_activation = activation;    
+    float aspect = viewport.x / viewport.y;    
+    vec2 scale = vec2(1.0 / aspect, 1.0);    
+    gl_Position = vec4(position * scale, 0.0, 1.0);
+    
+    // v_activation = activation;
+    // gl_Position = vec4(position * 0.01, 0.0, 1.0);  // Use same scale as neurons
+}
+)";
+
+const char *synapse_fragment_shader_source = R"(
+#version 430
+
+in float v_activation;
+out vec4 fragColor;
+
+void main() {
+    vec3 color = mix(
+        vec3(0.3, 0.0, 0.0),  // Dim color for inactive connections
+        vec3(0.0, 0.3, 0.0),  // Brighter for active connections
+        v_activation
+    );
+
+    // float alpha = 0.3 * v_activation;
+    
+    fragColor = vec4(color, 0.2);  // Semi-transparent lines
 }
 )";
 
@@ -119,47 +159,6 @@ void main() {
 
 void create_framebuffers(Renderer &renderer, usize width, usize height) {
 }
-
-// In renderer.cpp, add line shaders:
-const char *synapse_vertex_shader_source = R"(
-#version 430
-
-layout(location = 0) in vec2 position;
-layout(location = 1) in float activation;
-
-uniform vec2 viewport;
-
-out float v_activation;
-
-void main() {
-    v_activation = activation;    
-    float aspect = viewport.x / viewport.y;    
-    vec2 scale = vec2(1.0 / aspect, 1.0);    
-    gl_Position = vec4(position * scale, 0.0, 1.0);
-    
-    // v_activation = activation;
-    // gl_Position = vec4(position * 0.01, 0.0, 1.0);  // Use same scale as neurons
-}
-)";
-
-const char *synapse_fragment_shader_source = R"(
-#version 430
-
-in float v_activation;
-out vec4 fragColor;
-
-void main() {
-    vec3 color = mix(
-        vec3(0.2, 0.1, 0.05),  // Dim color for inactive connections
-        vec3(0.5, 0.2, 0.1),  // Brighter for active connections
-        v_activation
-    );
-
-    float alpha = 0.2 * v_activation;
-    
-    fragColor = vec4(color, alpha);  // Semi-transparent lines
-}
-)";
 
 void renderer_render_synapses(const Renderer &renderer, const Network &network);
 void renderer_render_neurons(const Renderer &renderer, const Network &network);

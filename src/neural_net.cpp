@@ -36,7 +36,8 @@ void main() {
   if (input_sum > threshold) {
     activation = 1.0;
   } else {
-    activation *= 0.95;  // Decay
+    // activation *= 0.95;  // Decay
+    activation *= 0.9;  // Decay
   }
 
   // Store updated activation

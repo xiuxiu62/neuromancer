@@ -56,13 +56,16 @@ int main() {
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
     Network network;
-    network_init(network, MAX_NEURONS / 32);
+    network_init(network, MAX_NEURONS / 8);
 
     Renderer renderer;
     renderer_init(renderer);
 
+    usize frame = 0;
     while (!glfwWindowShouldClose(window)) {
+        // if (frame++ % 5 == 0) {
         network_update(network);
+        // }
         process_input(window);
 
         glClear(GL_COLOR_BUFFER_BIT);

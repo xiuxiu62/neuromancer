@@ -22,6 +22,36 @@ struct Network {
     usize neuron_count;
 };
 
+struct Neuron {
+    enum Kind {
+        Input,
+        Hidden,
+        Output,
+    };
+
+    Kind kind;
+    f32 activation;
+    f32 threshold;
+};
+
+struct NetworkTwo {
+    Neuron *neurons;
+    usize neuron_count;
+
+    i32 *connections;
+    f32 *weights;
+    usize max_connections;
+
+    struct { // Remote resources
+        GLuint program;
+        struct {
+            GLuint neurons;
+            GLuint connections;
+            GLuint weights;
+        } buffers;
+    } compute;
+};
+
 void network_init(Network &net, usize neuron_count);
 
 void network_deinit(Network &net);
