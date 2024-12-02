@@ -1,13 +1,26 @@
 #include "neural_net.hpp"
-#include <string.h>
+
+#include <cstring>
+
+constexpr f32 EPSILON = 1e-6f;
+constexpr f32 PI = 3.1415926535897932384626433832795;
+constexpr f32 PI2 = 6.2831853071795864769252867665590;
+constexpr f32 PHI = 1.6180339887498948482045868343656;
 
 const char *compute_shader_source = R"(
 #version 430
 
 layout(local_size_x = 256) in;
 
+struct Neuron {
+    vec3 position;
+    float activation;
+    float threshold;
+};
+
 layout(std430, binding = 0) buffer NeuronData {
-  vec4 neurons[]; // x,y = position, z = activation, w = threshold
+  Neuron  neurons[];
+  // vec4 neurons[]; // x,y = position, z = activation, w = threshold
 };
 
 layout(std430, binding = 1) buffer SynapseData {
@@ -81,36 +94,45 @@ void network_init(Network &net, usize neuron_count) {
     net.neuron_count = neuron_count;
 
     // Allocate host memory
-    usize neuron_data_size = neuron_count * 4 * sizeof(float); // vec4 per neuron
-    usize synapse_data_size = neuron_count * MAX_SYNAPSES * sizeof(int);
-    usize weight_data_size = neuron_count * MAX_SYNAPSES * sizeof(float);
+    usize neuron_data_size = neuron_count * sizeof(f32) * 5;
+    usize synapse_data_size = neuron_count * MAX_SYNAPSES * sizeof(i32);
+    usize weight_data_size = neuron_count * MAX_SYNAPSES * sizeof(f32);
 
-    net.neuron_data = (f32 *)malloc(neuron_data_size);
+    net.neuron_data = (Neuron *)malloc(neuron_data_size);
     net.synapse_data = (i32 *)malloc(synapse_data_size);
     net.weight_data = (f32 *)malloc(weight_data_size);
 
-    // Initialize neurons in a spiral pattern
     for (usize i = 0; i < neuron_count; i++) {
-        f32 angle = i * 0.5f;
+        f32 phi = acos(1.0f - 2.0f * (f32)i / neuron_count); // Inclination
+        f32 theta = PI * (1.0f + sqrt(5.0f)) * i;            // Azimuth
         f32 radius = sqrt((f32)i / neuron_count);
 
-        // Position
-        net.neuron_data[i * 4 + 0] = cos(angle) * radius;
-        net.neuron_data[i * 4 + 1] = sin(angle) * radius;
-        net.neuron_data[i * 4 + 2] = 0.0f; // activation
-        net.neuron_data[i * 4 + 3] = 0.5f; // threshold
-
-        // Random connections
-        for (int j = 0; j < MAX_SYNAPSES; j++) {
-            if (j < 3 + rand() % (MAX_SYNAPSES - 3)) {
-                net.synapse_data[i * MAX_SYNAPSES + j] = rand() % neuron_count;
-                net.weight_data[i * MAX_SYNAPSES + j] = 0.1f + (f32)rand() / RAND_MAX * 0.4f;
-            } else {
-                net.synapse_data[i * MAX_SYNAPSES + j] = -1;
-                net.weight_data[i * MAX_SYNAPSES + j] = 0.0f;
-            }
-        }
+        net.neuron_data[i * 4].position[0] = radius * sin(phi) * cos(theta); // x
+        net.neuron_data[i * 4].position[1] = radius * sin(phi) * sin(theta); // y
+        net.neuron_data[i * 4].position[2] = radius * cos(phi);              // z
     }
+
+    // for (usize i = 0; i < neuron_count; i++) {
+    //     f32 angle = i * 0.5f;
+    //     f32 radius = sqrt((f32)i / neuron_count);
+
+    //     // Position
+    //     net.neuron_data[i * 4 + 0] = cos(angle) * radius;
+    //     net.neuron_data[i * 4 + 1] = sin(angle) * radius;
+    //     net.neuron_data[i * 4 + 2] = 0.0f; // activation
+    //     net.neuron_data[i * 4 + 3] = 0.5f; // threshold
+
+    //     // Random connections
+    //     for (int j = 0; j < MAX_SYNAPSES; j++) {
+    //         if (j < 3 + rand() % (MAX_SYNAPSES - 3)) {
+    //             net.synapse_data[i * MAX_SYNAPSES + j] = rand() % neuron_count;
+    //             net.weight_data[i * MAX_SYNAPSES + j] = 0.1f + (f32)rand() / RAND_MAX * 0.4f;
+    //         } else {
+    //             net.synapse_data[i * MAX_SYNAPSES + j] = -1;
+    //             net.weight_data[i * MAX_SYNAPSES + j] = 0.0f;
+    //         }
+    //     }
+    // }
 
     network_init_remote_resources(net, neuron_data_size, synapse_data_size, weight_data_size);
     network_init_shaders(net);
@@ -186,15 +208,15 @@ usize network_bin_size(Network &net) {
 }
 
 void network_update(Network &net) {
-    static int frame = 0;
-    if (frame++ % 120 == 0) { // Every 120 frames
-        // Stimulate neuron 0
-        net.neuron_data[2] = 1.0f; // Set activation to max
+    // static int frame = 0;
+    // if (frame++ % 120 == 0) { // Every 120 frames
+    //     // Stimulate neuron 0
+    //     net.neuron_data[2] = 1.0f; // Set activation to max
 
-        // Upload the changed data
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.neuron_buffer);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, net.neuron_count * 4 * sizeof(float), net.neuron_data);
-    }
+    //     // Upload the changed data
+    //     glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.neuron_buffer);
+    //     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, net.neuron_count * 4 * sizeof(float), net.neuron_data);
+    // }
 
     glad_glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, net.neuron_buffer);
     glad_glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, net.synapse_buffer);
@@ -214,7 +236,7 @@ void network_update(Network &net) {
 
     // Read back activation values
     for (usize i = 0; i < net.neuron_count; i++) {
-        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, (i * 4 + 2) * sizeof(f32), sizeof(f32),
-                           &net.neuron_data[i * 4 + 2]);
+        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, (i * 4 + 3) * sizeof(f32), sizeof(f32),
+                           &net.neuron_data[i * 4].activation);
     }
 }

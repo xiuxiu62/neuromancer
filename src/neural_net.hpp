@@ -10,47 +10,53 @@
 #define MAX_NEURONS 2048
 #define MAX_SYNAPSES 16
 
+struct Neuron {
+    f32 position[3];
+    f32 activation;
+    f32 threshold;
+};
+
 struct Network {
     GLuint program;
     GLuint neuron_buffer;
     GLuint synapse_buffer;
     GLuint weight_buffer;
 
-    f32 *neuron_data;
+    Neuron *neuron_data;
     i32 *synapse_data;
     f32 *weight_data;
     usize neuron_count;
 };
 
-struct Neuron {
-    enum Kind {
-        Input,
-        Hidden,
-        Output,
-    };
+// struct NeuronTwo {
+//     enum Kind {
+//         Input,
+//         Hidden,
+//         Output,
+//     };
 
-    Kind kind;
-    f32 activation;
-    f32 threshold;
-};
+//     Kind kind;
+//     f32 activation;
+//     f32 threshold;
+// };
 
-struct NetworkTwo {
-    Neuron *neurons;
-    usize neuron_count;
+// struct NetworkTwo {
+//     NeuronTwo *neurons;
+//     usize neuron_count;
 
-    i32 *connections;
-    f32 *weights;
-    usize max_connections;
+//     i32 *connections;
+//     f32 *weights;
+//     usize max_connections;
 
-    struct { // Remote resources
-        GLuint program;
-        struct {
-            GLuint neurons;
-            GLuint connections;
-            GLuint weights;
-        } buffers;
-    } compute;
-};
+//     struct { // Remote resources
+//         GLuint program;
+//         struct {
+//             GLuint neurons;
+//             GLuint connections;
+//             GLuint weights;
+//         } buffers;
+//     } compute;
+// };
 
 void network_init(Network &net, usize neuron_count);
 void network_deinit(Network &net);
