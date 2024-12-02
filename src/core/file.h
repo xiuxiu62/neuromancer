@@ -28,7 +28,7 @@ static inline void file_close(FILE *file) {
 
 // Reads contents of a file into a string
 // This allocates and must be cleaned up
-static const char *file_read_to_string(const char *path) {
+static const char *read_file_to_string(const char *path) {
     char *contents = nullptr;
 #define finish()                                                                                                       \
     file_close(file);                                                                                                  \
@@ -58,6 +58,6 @@ static const char *file_read_to_string(const char *path) {
     return contents;
 }
 
-// static void file_write_string(const char *path, const char *data, usize len) {
-
-// }
+// Assumes data is null terminated
+static void write_string_to_file(const char *path, const char *data) {
+}

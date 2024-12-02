@@ -34,6 +34,27 @@ struct Neuron {
     f32 threshold;
 };
 
+struct NeuronTwo {
+    enum Kind { Input, Hidden, Output };
+
+    Kind kind;
+    f32 activation;
+    f32 threshold;
+};
+
+struct NetworkThree {
+    // const usize MAX_NEURONS = 2048;
+    // const usize MAX_CONNECTIONS = 8;
+
+    struct Connection {
+        usize connection;
+        f32 weight;
+    };
+
+    NeuronTwo *neurons;
+    Connection *connections;
+};
+
 struct NetworkTwo {
     Neuron *neurons;
     usize neuron_count;
@@ -54,7 +75,9 @@ struct NetworkTwo {
 
 void network_init(Network &net, usize neuron_count);
 void network_deinit(Network &net);
-const u8 *network_serialize(Network &net);
-bool network_deserialize(Network &net, const u8 *data, usize len);
+bool save(Network &net, const char *path);
+bool load(Network &net, const char *path);
+const u8 *serialize(Network &net);
+bool deserialize(Network &net, const u8 *data, usize len);
 usize network_bin_size(Network &net);
 void network_update(Network &net);

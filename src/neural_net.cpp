@@ -1,4 +1,7 @@
 #include "neural_net.hpp"
+
+#include "serialize.hpp"
+
 #include <string.h>
 
 const char *compute_shader_source = R"(
@@ -122,8 +125,6 @@ void network_deinit(Network &net) {
     free(net.weight_data);
 }
 
-const usize BIN_MAGIN = 0x78697500;
-
 const u8 *network_serialize(Network &net) {
     usize neuron_data_size = net.neuron_count * 4 * sizeof(f32); // vec4 per neuron
     usize synapse_data_size = net.neuron_count * MAX_SYNAPSES * sizeof(i32);
@@ -138,7 +139,7 @@ const u8 *network_serialize(Network &net) {
     i32 *synapse_data = reinterpret_cast<i32 *>(data + +sizeof(usize) * 2 + neuron_data_size);
     f32 *weight_data = reinterpret_cast<f32 *>(data + sizeof(usize) * 2 + neuron_data_size + synapse_data_size);
 
-    *header = BIN_MAGIN;
+    *header = BIN_MAGIC;
     *neuron_count = net.neuron_count;
     memcpy(neuron_data, net.neuron_data, neuron_data_size);
     memcpy(synapse_data, net.synapse_data, synapse_data_size);
@@ -153,7 +154,7 @@ bool network_deserialize(Network &net, const u8 *data, usize len) {
     }
 
     const usize *header = reinterpret_cast<const usize *>(data);
-    if (*header != BIN_MAGIN) {
+    if (*header != BIN_MAGIC) {
         return false;
     }
 

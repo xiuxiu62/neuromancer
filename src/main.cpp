@@ -13,10 +13,17 @@ void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void process_input(GLFWwindow *window);
 
 static State state = {
-    .paused = false,
+    .network_paused = false,
+    .renderer_paused = false,
     .neuron_color = {.active = {1.0, 1.0, 1.0, 1.0}, .inactive = {0.1, 0.1, 0.2, 1.0}},
     .synapse_color = {.active = {0.0, 0.5, 0.0, 0.5}, .inactive = {0.5, 0.0, 0.0, 0.5}},
 };
+
+// void try_load_state() {
+// }
+
+// void try_save_state() {
+// }
 
 int main() {
     if (!glfwInit()) {
@@ -85,8 +92,8 @@ int main() {
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 430");
 
-    // Setup imgui style
     ImGui::StyleColorsDark();
+    ImGui::LoadIniSettingsFromDisk("imgui.ini");
 
     // TODO: track time delta for network
     usize frame = 0;
@@ -97,34 +104,33 @@ int main() {
         ImGui::NewFrame();
 
         ImGui::Begin("Mother Ship");
-        if (ImGui::Button(state.paused ? "Unpause" : "Pause")) {
-            state.paused = !state.paused;
+        if (ImGui::Button(state.network_paused ? "Unpause Network" : "Pause Network")) {
+            state.network_paused = !state.network_paused;
+        }
+
+        if (ImGui::Button(state.renderer_paused ? "Unpause Renderer" : "Pause Renderer")) {
+            state.renderer_paused = !state.renderer_paused;
         }
 
         static bool show_colors = false;
-        // if (ImGui::Button("Color Settings")) {
-        //     show_colors = !show_colors;
-        // }
-
-        // if (show_colors) {
         if (ImGui::CollapsingHeader("Color Settings")) {
-            // ImGui::Begin("Colors", &show_colors);
             ImGui::ColorEdit4("Active Neuron", state.neuron_color.active);
             ImGui::ColorEdit4("Inactive Neuron", state.neuron_color.inactive);
             ImGui::ColorEdit4("Active Synapse", state.synapse_color.active);
             ImGui::ColorEdit4("Inactive Synapse", state.synapse_color.inactive);
-            // ImGui::End();
         }
-
         ImGui::End();
-        if (!state.paused && frame++ % 3 == 0) {
-            network_update(network);
-        }
 
         process_input(window);
 
+        if (!state.network_paused && frame++ % 3 == 0) {
+            network_update(network);
+        }
+
         glClear(GL_COLOR_BUFFER_BIT);
-        renderer_render(renderer, network, state);
+        if (!state.renderer_paused) {
+            renderer_render(renderer, network, state);
+        }
 
         // Render imgui
         ImGui::Render();
@@ -133,6 +139,8 @@ int main() {
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    ImGui::SaveIniSettingsToDisk("imgui.ini");
 
     // Cleanup imgui
     ImGui_ImplOpenGL3_Shutdown();

@@ -14,29 +14,55 @@ layout(std430, binding = 2) buffer WeightData {
   float weights[]; 
 };
 
+layout(std430, binding = 2) buffer SynapseVertexData {
+    Vertex vertices[];
+};
+
 uniform float delta_t;
+uniform int max_synapses;
+uniform float neuron_count;
 
 void main() {
-  uint neuronId = gl_GlobalInvocationID.x;
-  if (neuronId >= neurons.length()) return;
+  uint neuron_id = gl_GlobalInvocationID.x;
+  if (neuron_id >= neurons.length()) return;
 
-  // Get current neuron data
-  vec4 neuron = neurons[neuronId];
-  float activation = neuron.z;
-  float threshold = neuron.w;
+  vec4 source_neuron = neurons[neuron_id];
 
-  // Sum inputs from connected neurons
-  float input_sum = 0.0;
-  uint synapse_offset = neuronId * 16;  // MAX_SYNAPSES
+  for (int i = 0; i < max_synapses; i++) {
+    int target_id = synapses[neuron_id * max_synapses + i];
+    if (target_id < 0) continue;
 
-  // Update activation
-  if (input_sum > threshold) {
-    activation = 1.0;
-  } else {
-    // activation *= 0.95;  // Decay
-    activation *= 0.9;  // Decay
+    vec4 target_neuron = neurons[target_id];
+
+    // Each synapse creates 2 vertices
+    uint vertex_base = (neuron_id * max_synapses + i) * 2;
+
+    // Source vertex
+    vertices[vertex_base].position = source_neuron.xy;
+    vertices[vertex_base].activation = source_neuron.z;
+
+    // Target vertex
+    vertices[vertex_base + 1].position = target_neuron.xy;
+    vertices[vertex_base + 1].activation = target_neuron.z;
   }
 
-  // Store updated activation
-  neurons[neuronId].z = activation;
+  // // Get current neuron data
+  // vec4 neuron = neurons[neuron_id];
+  // float activation = neuron.z;
+  // float threshold = neuron.w;
+
+  // // Sum inputs from connected neurons
+  // float input_sum = 0.0;
+  // uint synapse_offset = neuron_id * 16;  // MAX_SYNAPSES
+
+  // // Update activation
+  // if (input_sum > threshold) {
+  //   activation = 1.0;
+  // } else {
+  //   // activation *= 0.95;  // Decay
+  //   activation *= 0.9;  // Decay
+  // }
+
+  // // Store updated activation
+  // neurons[neuron_id].z = activation;
 }
