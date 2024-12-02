@@ -18,11 +18,12 @@ void main() {
     v_activation = activation;    
 
     float aspect = viewport.x / viewport.y;
+    float inverse_aspect = viewport.y / viewport.x;
     vec2 scale = vec2(1.0 / aspect, 1.0);
     
     gl_Position = vec4((position * scale), 0.0, 1.0);  // Scale down positions    
     // gl_PointSize = 7.5 * viewport.y / viewport.x;
-    gl_PointSize = 10.0 * viewport.y / viewport.x;
+    gl_PointSize = 7.5 * inverse_aspect;
 }
 )";
 
@@ -234,86 +235,6 @@ void renderer_deinit(Renderer &renderer) {
     glDeleteVertexArrays(1, &renderer.neuron_vao);
     glDeleteVertexArrays(1, &renderer.synapse_vao);
 }
-
-// void renderer_render(const Renderer &renderer, const Network &network) {
-//     GLint viewport[4];
-//     glGetIntegerv(GL_VIEWPORT, viewport);
-//     f32 width = static_cast<f32>(viewport[2]);
-//     f32 height = static_cast<f32>(viewport[3]);
-
-//     glUseProgram(renderer.neuron_program);
-//     GLint neuron_viewport_loc = glGetUniformLocation(renderer.neuron_program, "viewport");
-//     glUniform2f(neuron_viewport_loc, width, height);
-
-//     glBindVertexArray(renderer.neuron_vao);
-
-//     // TODO: This is our update procedure and should be cached performed externally and cached in the Renderer
-//     const usize SYNAPSE_CACHE_STRIDE = MAX_NEURONS * MAX_SYNAPSES * 6;
-//     f32 synapse_data[SYNAPSE_CACHE_STRIDE]; // 6 floats per synapse (x1, y1, a1, x2, y2, a2);
-//     usize synapse_count = 0;
-
-//     for (usize i = 0; i < network.neuron_count; i++) {
-//         float x1 = network.neuron_data[i * 4 + 0];
-//         float y1 = network.neuron_data[i * 4 + 1];
-//         float activation1 = network.neuron_data[i * 4 + 2];
-
-//         for (int j = 0; j < MAX_SYNAPSES; j++) {
-//             int target = network.synapse_data[i * MAX_SYNAPSES + j];
-//             if (target >= 0) {
-//                 float x2 = network.neuron_data[target * 4 + 0];
-//                 float y2 = network.neuron_data[target * 4 + 1];
-//                 float activation2 = network.neuron_data[target * 4 + 2];
-
-//                 // Ensure we don't overflow the array
-//                 if (synapse_count + 6 <= MAX_SYNAPSES) {
-//                     synapse_data[synapse_count++] = x1;
-//                     synapse_data[synapse_count++] = y1;
-//                     synapse_data[synapse_count++] = activation1;
-//                     synapse_data[synapse_count++] = x2;
-//                     synapse_data[synapse_count++] = y2;
-//                     synapse_data[synapse_count++] = activation2;
-//                 }
-//             }
-//         }
-//     }
-
-//     // Upload synapse data
-//     glBindBuffer(GL_ARRAY_BUFFER, renderer.synapse_buffer);
-//     glBufferData(GL_ARRAY_BUFFER, SYNAPSE_CACHE_STRIDE * sizeof(f32), synapse_data, GL_STREAM_DRAW);
-
-//     // Setup synapse attrs
-//     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 3,
-//                           (void *)0); // position
-//     glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(f32) * 3,
-//                           (void *)(sizeof(f32) * 2)); // activation
-//     glEnableVertexAttribArray(0);
-//     glEnableVertexAttribArray(1);
-
-//     // Bind network's neuron buffer and set up attributes
-//     glBindBuffer(GL_ARRAY_BUFFER, network.neuron_buffer);
-
-//     // Position (x,y)
-//     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void *)0);
-
-//     // Activation
-//     glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void *)(sizeof(float) * 2));
-
-//     // Threshold
-//     glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(float) * 4, (void *)(sizeof(float) * 3));
-//     glEnableVertexAttribArray(0);
-//     glEnableVertexAttribArray(1);
-//     glEnableVertexAttribArray(2);
-
-//     // Enable blending for glow effect
-//     glEnable(GL_BLEND);
-//     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-//     // Draw points
-//     glDrawArrays(GL_POINTS, 0, network.neuron_count);
-
-//     // Cleanup state
-//     glDisable(GL_BLEND);
-// }
 
 void renderer_render(const Renderer &renderer, const Network &network, const State &state) {
     // Render synapses first (they should be behind neurons)
