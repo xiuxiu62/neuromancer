@@ -1,6 +1,4 @@
 /build
 /.cache
 
-# /deps/imgui
-
 compile_commands.json

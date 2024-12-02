@@ -25,7 +25,17 @@ endif()
 file(GLOB_RECURSE SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/*.c" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cc" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB_RECURSE HEADERS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h" "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp")
 
-add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/imgui)
+set(IMGUI_SOURCES 
+  ${IMGUI_DIR}/imgui.cpp
+  ${IMGUI_DIR}/imgui_draw.cpp
+  ${IMGUI_DIR}/imgui_tables.cpp
+  ${IMGUI_DIR}/imgui_widgets.cpp
+  ${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
+  ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
+)
+
+add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS} ${IMGUI_SOURCES})
 
 add_subdirectory(deps/glfw)
 add_subdirectory(deps/glad)
@@ -34,6 +44,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${GLFW_INCLUDE_DIR}
     ${GLAD_INCLUDE_DIR}
+    ${IMGUI_DIR}
+    ${IMGUI_DIR}/backends
 )
 
 target_link_libraries(${PROJECT_NAME}

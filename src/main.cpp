@@ -1,5 +1,8 @@
 #include "core/file.h"
 #include "core/logger.h"
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 #include "neural_net.hpp"
 #include "renderer.hpp"
 
@@ -7,6 +10,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <glad/glad.h>
+// #include <imgui.h>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void process_input(GLFWwindow *window);
@@ -67,8 +71,30 @@ int main() {
     Renderer renderer;
     renderer_init(renderer);
 
+    // Initialize imgui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    // io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;  // Optional: Enable Keyboard Controls
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 430");
+
+    // Setup imgui style
+    ImGui::StyleColorsDark();
+
     usize frame = 0;
     while (!glfwWindowShouldClose(window)) {
+        // Start imgui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        ImGui::Begin("Example Window");
+        ImGui::Text("hey sailor");
+        ImGui::End();
+
         if (frame++ % 3 == 0) {
             network_update(network);
         }
@@ -77,9 +103,18 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
         renderer_render(renderer, network);
 
+        // Render imgui
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    // Cleanup imgui
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     renderer_deinit(renderer);
     network_deinit(network);
