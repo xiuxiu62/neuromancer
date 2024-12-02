@@ -1,8 +1,11 @@
+#include "core/file.h"
 #include "core/logger.h"
 #include "neural_net.hpp"
 #include "renderer.hpp"
 
 #include <GLFW/glfw3.h>
+#include <cstdlib>
+#include <cstring>
 #include <glad/glad.h>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
@@ -55,7 +58,10 @@ int main() {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
+    const char *data = file_read_to_string("example.xiu");
+
     Network network;
+    // const auto temp = network_deserialize(network, (u8 *)data, strlen(data));
     network_init(network, MAX_NEURONS / 8);
 
     Renderer renderer;
@@ -63,9 +69,9 @@ int main() {
 
     usize frame = 0;
     while (!glfwWindowShouldClose(window)) {
-        // if (frame++ % 5 == 0) {
-        network_update(network);
-        // }
+        if (frame++ % 3 == 0) {
+            network_update(network);
+        }
         process_input(window);
 
         glClear(GL_COLOR_BUFFER_BIT);

@@ -1,4 +1,5 @@
 #include "neural_net.hpp"
+#include <string.h>
 
 const char *compute_shader_source = R"(
 #version 430
@@ -44,6 +45,24 @@ void main() {
   neurons[neuronId].z = activation;
 }
 )";
+
+void network_init_remote_resources(Network &net, usize neuron_data_size, usize synapse_data_size,
+                                   usize weight_data_size) {
+    // Create OpenGL buffers
+    glGenBuffers(1, &net.neuron_buffer);
+    glGenBuffers(1, &net.synapse_buffer);
+    glGenBuffers(1, &net.weight_buffer);
+
+    // Initialize buffers
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.neuron_buffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, neuron_data_size, net.neuron_data, GL_DYNAMIC_DRAW);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.synapse_buffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, synapse_data_size, net.synapse_data, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.weight_buffer);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, weight_data_size, net.weight_data, GL_STATIC_DRAW);
+}
 
 void network_init_shaders(Network &net) {
     GLuint shader = glCreateShader(GL_COMPUTE_SHADER);
@@ -93,21 +112,7 @@ void network_init(Network &net, usize neuron_count) {
         }
     }
 
-    // Create OpenGL buffers
-    glGenBuffers(1, &net.neuron_buffer);
-    glGenBuffers(1, &net.synapse_buffer);
-    glGenBuffers(1, &net.weight_buffer);
-
-    // Initialize buffers
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.neuron_buffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, neuron_data_size, net.neuron_data, GL_DYNAMIC_DRAW);
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.synapse_buffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, synapse_data_size, net.synapse_data, GL_STATIC_DRAW);
-
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.weight_buffer);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, weight_data_size, net.weight_data, GL_STATIC_DRAW);
-
+    network_init_remote_resources(net, neuron_data_size, synapse_data_size, weight_data_size);
     network_init_shaders(net);
 }
 
@@ -115,6 +120,69 @@ void network_deinit(Network &net) {
     free(net.neuron_data);
     free(net.synapse_data);
     free(net.weight_data);
+}
+
+const usize BIN_MAGIN = 0x78697500;
+
+const u8 *network_serialize(Network &net) {
+    usize neuron_data_size = net.neuron_count * 4 * sizeof(f32); // vec4 per neuron
+    usize synapse_data_size = net.neuron_count * MAX_SYNAPSES * sizeof(i32);
+    usize weight_data_size = net.neuron_count * MAX_SYNAPSES * sizeof(f32);
+    usize total_size = sizeof(usize) * 2 + neuron_data_size + synapse_data_size + weight_data_size;
+
+    u8 *data = static_cast<u8 *>(calloc(total_size, sizeof(u8)));
+
+    usize *header = reinterpret_cast<usize *>(data);
+    usize *neuron_count = reinterpret_cast<usize *>(data + sizeof(usize));
+    f32 *neuron_data = reinterpret_cast<f32 *>(data + sizeof(usize) * 2);
+    i32 *synapse_data = reinterpret_cast<i32 *>(data + +sizeof(usize) * 2 + neuron_data_size);
+    f32 *weight_data = reinterpret_cast<f32 *>(data + sizeof(usize) * 2 + neuron_data_size + synapse_data_size);
+
+    *header = BIN_MAGIN;
+    *neuron_count = net.neuron_count;
+    memcpy(neuron_data, net.neuron_data, neuron_data_size);
+    memcpy(synapse_data, net.synapse_data, synapse_data_size);
+    memcpy(weight_data, net.weight_data, weight_data_size);
+
+    return data;
+}
+
+bool network_deserialize(Network &net, const u8 *data, usize len) {
+    if (len < 2 * sizeof(usize)) {
+        return false;
+    }
+
+    const usize *header = reinterpret_cast<const usize *>(data);
+    if (*header != BIN_MAGIN) {
+        return false;
+    }
+
+    const usize *neuron_count = reinterpret_cast<const usize *>(data + sizeof(usize));
+    usize neuron_data_size = *neuron_count * sizeof(Neuron);
+    usize synapse_data_size = *neuron_count * MAX_SYNAPSES * sizeof(i32);
+    usize weight_data_size = *neuron_count * MAX_SYNAPSES * sizeof(f32);
+    usize expected_size = sizeof(usize) * 2 + neuron_data_size + synapse_data_size + weight_data_size;
+
+    if (len != expected_size) {
+        return false;
+    }
+
+    net.neuron_count = *neuron_count;
+    memcpy(net.neuron_data, data + sizeof(usize) * 2, neuron_data_size);
+    memcpy(net.synapse_data, data + neuron_data_size + sizeof(usize) * 2, synapse_data_size);
+    memcpy(net.weight_data, data + neuron_data_size + synapse_data_size + sizeof(usize) * 2, weight_data_size);
+
+    network_init_remote_resources(net, neuron_data_size, synapse_data_size, weight_data_size);
+    network_init_shaders(net);
+
+    return true;
+}
+
+usize network_bin_size(Network &net) {
+    usize neuron_data_size = net.neuron_count * 4 * sizeof(f32); // vec4 per neuron
+    usize synapse_data_size = net.neuron_count * MAX_SYNAPSES * sizeof(i32);
+    usize weight_data_size = net.neuron_count * MAX_SYNAPSES * sizeof(f32);
+    return sizeof(usize) * 2 + neuron_data_size + synapse_data_size + weight_data_size;
 }
 
 void network_update(Network &net) {

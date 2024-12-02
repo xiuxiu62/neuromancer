@@ -53,7 +53,8 @@ struct NetworkTwo {
 };
 
 void network_init(Network &net, usize neuron_count);
-
 void network_deinit(Network &net);
-
+const u8 *network_serialize(Network &net);
+bool network_deserialize(Network &net, const u8 *data, usize len);
+usize network_bin_size(Network &net);
 void network_update(Network &net);

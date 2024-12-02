@@ -57,3 +57,7 @@ static const char *file_read_to_string(const char *path) {
     contents[len] = '\0'; // null terminate
     return contents;
 }
+
+// static void file_write_string(const char *path, const char *data, usize len) {
+
+// }
