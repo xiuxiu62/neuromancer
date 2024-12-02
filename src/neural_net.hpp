@@ -80,4 +80,4 @@ bool load(Network &net, const char *path);
 const u8 *serialize(Network &net);
 bool deserialize(Network &net, const u8 *data, usize len);
 usize network_bin_size(Network &net);
-void network_update(Network &net);
+void network_update(Network &net, f32 delta_t = 0.0f);

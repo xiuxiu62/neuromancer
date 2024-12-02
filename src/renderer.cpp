@@ -59,21 +59,38 @@ void main() {
 const char *synapse_vertex_shader_source = R"(
 #version 430
 
-layout(location = 0) in vec2 position;
-layout(location = 1) in float activation;
+layout(location = 0) in uint vertex_id;
+
+layout(std430, binding = 0) buffer NeuronData {
+    vec4 neurons[];
+};
+
+layout(std430, binding = 1) buffer SynapseData {
+    int synapses[];
+};
 
 uniform vec2 viewport;
+uniform int max_synapses;
 
 out float v_activation;
 
 void main() {
-    v_activation = activation;    
+    uint synapse_id = vertex_id / 2;
+    uint is_end = vertex_id % 2;
+
+    uint source_neuron = synapse_id / max_synapses;
+    uint synapse_offset = synapse_id % max_synapses;
+
+    int target_neuron = synapses[source_neuron * max_synapses + synapse_offset];
+    
+    // Get the appropriate neuron data based on whether this is start or end of line
+    vec4 neuron = neurons[is_end == 1 ? target_neuron : source_neuron];
+    
+    v_activation = neuron.z;  // activation is stored in z component
+    
     float aspect = viewport.x / viewport.y;    
     vec2 scale = vec2(1.0 / aspect, 1.0);    
-    gl_Position = vec4(position * scale, 0.0, 1.0);
-    
-    // v_activation = activation;
-    // gl_Position = vec4(position * 0.01, 0.0, 1.0);  // Use same scale as neurons
+    gl_Position = vec4(neuron.xy * scale, 0.0, 1.0);
 }
 )";
 
@@ -262,6 +279,7 @@ void renderer_render_neurons(const Renderer &renderer, const Network &network, c
     glUniform4fv(inactive_loc, 1, state.neuron_color.inactive);
 
     glBindVertexArray(renderer.neuron_vao);
+
     glBindBuffer(GL_ARRAY_BUFFER, network.neuron_buffer);
 
     // Position (x,y)
@@ -291,68 +309,78 @@ void renderer_render_synapses(const Renderer &renderer, const Network &network, 
     float height = static_cast<float>(viewport[3]);
 
     glUseProgram(renderer.synapse_program);
+
     GLint viewport_loc = glGetUniformLocation(renderer.synapse_program, "viewport");
     GLint active_loc = glGetUniformLocation(renderer.synapse_program, "active_color");
     GLint inactive_loc = glGetUniformLocation(renderer.synapse_program, "inactive_color");
+    GLint max_synapses_loc = glGetUniformLocation(renderer.synapse_program, "max_synapses");
 
     glUniform2f(viewport_loc, width, height);
     glUniform4fv(active_loc, 1, state.synapse_color.active);
     glUniform4fv(inactive_loc, 1, state.synapse_color.inactive);
+    glUniform1i(max_synapses_loc, MAX_SYNAPSES);
 
     glBindVertexArray(renderer.synapse_vao);
+
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, network.neuron_buffer);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, network.synapse_buffer);
 
     // Enable blending for transparent lines
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    const usize SYNAPSE_CACHE_STRIDE = MAX_NEURONS * MAX_SYNAPSES * 6;
-    f32 synapse_data[SYNAPSE_CACHE_STRIDE];
-    usize synapse_count = 0;
+    // Draw all possible synapse vertices
+    usize total_vertices = network.neuron_count * MAX_SYNAPSES * 2;
+    glDrawArrays(GL_LINES, 0, total_vertices);
 
-    renderer_update_synapse_buffer(renderer, network, synapse_data, synapse_count);
+    // const usize SYNAPSE_CACHE_STRIDE = MAX_NEURONS * MAX_SYNAPSES * 6;
+    // f32 synapse_data[SYNAPSE_CACHE_STRIDE];
+    // usize synapse_count = 0;
+
+    // renderer_update_synapse_buffer(renderer, network, synapse_data, synapse_count);
 
     // Draw the synapses as lines
-    glDrawArrays(GL_LINES, 0, synapse_count / 3); // 3 floats per vertex
+    // glDrawArrays(GL_LINES, 0, synapse_count / 3); // 3 floats per vertex
 
     glDisable(GL_BLEND);
 }
 
-void renderer_update_synapse_buffer(const Renderer &renderer, const Network &network, f32 *synapse_data,
-                                    usize &synapse_count) {
-    synapse_count = 0;
+// void renderer_update_synapse_buffer(const Renderer &renderer, const Network &network, f32 *synapse_data,
+//                                     usize &synapse_count) {
+//     synapse_count = 0;
 
-    for (usize i = 0; i < network.neuron_count; i++) {
-        float x1 = network.neuron_data[i * 4 + 0];
-        float y1 = network.neuron_data[i * 4 + 1];
-        float activation1 = network.neuron_data[i * 4 + 2];
+//     for (usize i = 0; i < network.neuron_count; i++) {
+//         float x1 = network.neuron_data[i * 4 + 0];
+//         float y1 = network.neuron_data[i * 4 + 1];
+//         float activation1 = network.neuron_data[i * 4 + 2];
 
-        for (int j = 0; j < MAX_SYNAPSES; j++) {
-            int target = network.synapse_data[i * MAX_SYNAPSES + j];
-            if (target >= 0) {
-                float x2 = network.neuron_data[target * 4 + 0];
-                float y2 = network.neuron_data[target * 4 + 1];
-                float activation2 = network.neuron_data[target * 4 + 2];
+//         for (int j = 0; j < MAX_SYNAPSES; j++) {
+//             int target = network.synapse_data[i * MAX_SYNAPSES + j];
+//             if (target >= 0) {
+//                 float x2 = network.neuron_data[target * 4 + 0];
+//                 float y2 = network.neuron_data[target * 4 + 1];
+//                 float activation2 = network.neuron_data[target * 4 + 2];
 
-                // First vertex of the line
-                synapse_data[synapse_count++] = x1;
-                synapse_data[synapse_count++] = y1;
-                synapse_data[synapse_count++] = activation1;
+//                 // First vertex of the line
+//                 synapse_data[synapse_count++] = x1;
+//                 synapse_data[synapse_count++] = y1;
+//                 synapse_data[synapse_count++] = activation1;
 
-                // Second vertex of the line
-                synapse_data[synapse_count++] = x2;
-                synapse_data[synapse_count++] = y2;
-                synapse_data[synapse_count++] = activation2;
-            }
-        }
-    }
+//                 // Second vertex of the line
+//                 synapse_data[synapse_count++] = x2;
+//                 synapse_data[synapse_count++] = y2;
+//                 synapse_data[synapse_count++] = activation2;
+//             }
+//         }
+//     }
 
-    // Upload synapse data
-    glBindBuffer(GL_ARRAY_BUFFER, renderer.synapse_buffer);
-    glBufferData(GL_ARRAY_BUFFER, synapse_count * sizeof(f32), synapse_data, GL_STREAM_DRAW);
+//     // Upload synapse data
+//     glBindBuffer(GL_ARRAY_BUFFER, renderer.synapse_buffer);
+//     glBufferData(GL_ARRAY_BUFFER, synapse_count * sizeof(f32), synapse_data, GL_STREAM_DRAW);
 
-    // Setup synapse attributes
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 3, (void *)0);                 // position
-    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(f32) * 3, (void *)(sizeof(f32) * 2)); // activation
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-}
+//     // Setup synapse attributes
+//     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(f32) * 3, (void *)0);                 // position
+//     glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, sizeof(f32) * 3, (void *)(sizeof(f32) * 2)); // activation
+//     glEnableVertexAttribArray(0);
+//     glEnableVertexAttribArray(1);
+// }

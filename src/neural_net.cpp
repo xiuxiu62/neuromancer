@@ -186,20 +186,20 @@ usize network_bin_size(Network &net) {
     return sizeof(usize) * 2 + neuron_data_size + synapse_data_size + weight_data_size;
 }
 
-void network_update(Network &net) {
-    static int frame = 0;
-    if (frame++ % 120 == 0) { // Every 120 frames
-        // Stimulate neuron 0
-        net.neuron_data[2] = 1.0f; // Set activation to max
+void network_update(Network &net, f32 delta_t) {
+    // static int frame = 0;
+    // if (frame++ % 120 == 0) { // Every 120 frames
+    //     // Stimulate neuron 0
+    //     net.neuron_data[2] = 1.0f; // Set activation to max
 
-        // Upload the changed data
-        glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.neuron_buffer);
-        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, net.neuron_count * 4 * sizeof(float), net.neuron_data);
-    }
+    //     // Upload the changed data
+    //     glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.neuron_buffer);
+    //     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, net.neuron_count * 4 * sizeof(float), net.neuron_data);
+    // }
 
-    glad_glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, net.neuron_buffer);
-    glad_glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, net.synapse_buffer);
-    glad_glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, net.weight_buffer);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, net.neuron_buffer);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, net.synapse_buffer);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, net.weight_buffer);
 
     GLint delta_t_location = glGetUniformLocation(net.program, "delta_t");
     glUseProgram(net.program);
@@ -213,9 +213,9 @@ void network_update(Network &net) {
     // // Read back the updated data from GPU
     // glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, net.neuron_count * 4 * sizeof(f32), net.neuron_data);
 
-    // Read back activation values
-    for (usize i = 0; i < net.neuron_count; i++) {
-        glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, (i * 4 + 2) * sizeof(f32), sizeof(f32),
-                           &net.neuron_data[i * 4 + 2]);
-    }
+    // // Read back activation values
+    // for (usize i = 0; i < net.neuron_count; i++) {
+    //     glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, (i * 4 + 2) * sizeof(f32), sizeof(f32),
+    //                        &net.neuron_data[i * 4 + 2]);
+    // }
 }
