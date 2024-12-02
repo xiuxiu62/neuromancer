@@ -1,4 +1,3 @@
-#include "core/file.h"
 #include "core/logger.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -10,10 +9,17 @@
 #include <cstdlib>
 #include <cstring>
 #include <glad/glad.h>
-// #include <imgui.h>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void process_input(GLFWwindow *window);
+
+static struct {
+    bool paused = false;
+    struct {
+        f32 active[4] = {0};
+        f32 inactive[4] = {0};
+    } neuron_color, synapse_color;
+} state;
 
 int main() {
     if (!glfwInit()) {
@@ -66,7 +72,8 @@ int main() {
 
     Network network;
     // const auto temp = network_deserialize(network, (u8 *)data, strlen(data));
-    network_init(network, MAX_NEURONS / 8);
+    // network_init(network, MAX_NEURONS / 8);
+    network_init(network, MAX_NEURONS / 32);
 
     Renderer renderer;
     renderer_init(renderer);
@@ -84,6 +91,7 @@ int main() {
     // Setup imgui style
     ImGui::StyleColorsDark();
 
+    // TODO: track time delta for network
     usize frame = 0;
     while (!glfwWindowShouldClose(window)) {
         // Start imgui frame
@@ -91,13 +99,30 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        ImGui::Begin("Example Window");
-        ImGui::Text("hey sailor");
-        ImGui::End();
+        ImGui::Begin("Mother Ship");
+        if (ImGui::Button(state.paused ? "Unpause" : "Pause")) {
+            state.paused = !state.paused;
+        }
 
-        if (frame++ % 3 == 0) {
+        static bool show_colors = false;
+        if (ImGui::Button("Color Settings")) {
+            show_colors = !show_colors;
+        }
+
+        if (show_colors) {
+            ImGui::Begin("Colors", &show_colors);
+            ImGui::ColorEdit4("Active Neuron", state.neuron_color.active);
+            ImGui::ColorEdit4("Inactive Neuron", state.neuron_color.inactive);
+            ImGui::ColorEdit4("Active Synapse", state.synapse_color.active);
+            ImGui::ColorEdit4("Inactive Synapse", state.synapse_color.inactive);
+            ImGui::End();
+        }
+
+        ImGui::End();
+        if (!state.paused && frame++ % 3 == 0) {
             network_update(network);
         }
+
         process_input(window);
 
         glClear(GL_COLOR_BUFFER_BIT);

@@ -3,7 +3,6 @@
 #include "core/logger.h"
 #include "neural_net.hpp"
 #include "shader.hpp"
-#include <urlmon.h>
 
 const char *neuron_vertex_shader_source = R"(
 #version 430
@@ -84,12 +83,13 @@ out vec4 fragColor;
 
 void main() {
     vec3 color = mix(
-        vec3(0.3, 0.0, 0.0),  // Dim color for inactive connections
-        vec3(0.0, 0.3, 0.0),  // Brighter for active connections
+        vec3(0.5, 0.0, 0.0),  // Dim color for inactive connections
+        vec3(0.0, 0.5, 0.0),  // Brighter for active connections
         v_activation
     );
 
     // float alpha = 0.3 * v_activation;
+    float alpha = 0.5 * v_activation;
     
     fragColor = vec4(color, 0.2);  // Semi-transparent lines
 }
