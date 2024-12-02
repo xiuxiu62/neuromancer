@@ -1,6 +1,5 @@
 #include "renderer.hpp"
 
-#include "core/logger.h"
 #include "neural_net.hpp"
 #include "shader.hpp"
 
@@ -33,22 +32,24 @@ const char *neuron_fragment_shader_source = R"(
 in float v_activation;
 out vec4 fragColor;
 
+uniform vec4 active_color;
+uniform vec4 inactive_color;
+
 void main() {    
     vec2 coord = gl_PointCoord * 2.0 - 1.0;    
     float r = dot(coord, coord);    
     if (r > 1.0) discard;        
     
     // Base color changes with activation
-    vec3 baseColor = mix(        
-        vec3(0.1, 0.1, 0.2),  // Inactive state (darker blue)
-        // vec3(0.4, 0.8, 1.0),  // Active state (bright blue)
-        vec3(1.0, 1.0, 1.0),  // Active state (bright blue)
+    vec4 baseColor = mix(        
+        inactive_color,
+        active_color,
         v_activation    
     );
     
     float glow = exp(-r * 1.5);
-    vec3 finalColor = baseColor + vec3(0.1) * glow;
-    float alpha = min(1.0, glow + 0.2);
+    vec3 finalColor = baseColor.rgb + vec3(0.1) * glow;
+    float alpha = min(baseColor.a, glow + 0.2);
     
     fragColor = vec4(finalColor, alpha);
 }
@@ -81,17 +82,20 @@ const char *synapse_fragment_shader_source = R"(
 in float v_activation;
 out vec4 fragColor;
 
+uniform vec4 active_color;
+uniform vec4 inactive_color;
+
 void main() {
-    vec3 color = mix(
-        vec3(0.5, 0.0, 0.0),  // Dim color for inactive connections
-        vec3(0.0, 0.5, 0.0),  // Brighter for active connections
+    vec4 color = mix(
+        inactive_color,
+        active_color,
         v_activation
     );
 
-    // float alpha = 0.3 * v_activation;
-    float alpha = 0.5 * v_activation;
-    
-    fragColor = vec4(color, 0.2);  // Semi-transparent lines
+    // float alpha = color.a * v_activation;
+  
+    // fragColor = vec4(color.rgb, alpha);  // Semi-transparent lines
+    fragColor = color;
 }
 )";
 
@@ -160,8 +164,8 @@ void main() {
 // void create_framebuffers(Renderer &renderer, usize width, usize height) {
 // }
 
-void renderer_render_synapses(const Renderer &renderer, const Network &network);
-void renderer_render_neurons(const Renderer &renderer, const Network &network);
+void renderer_render_synapses(const Renderer &renderer, const Network &network, const State &state);
+void renderer_render_neurons(const Renderer &renderer, const Network &network, const State &state);
 void renderer_update_synapse_buffer(const Renderer &renderer, const Network &network, f32 *synapse_data,
                                     usize &synapse_count);
 
@@ -311,15 +315,15 @@ void renderer_deinit(Renderer &renderer) {
 //     glDisable(GL_BLEND);
 // }
 
-void renderer_render(const Renderer &renderer, const Network &network) {
+void renderer_render(const Renderer &renderer, const Network &network, const State &state) {
     // Render synapses first (they should be behind neurons)
-    renderer_render_synapses(renderer, network);
+    renderer_render_synapses(renderer, network, state);
 
     // Then render neurons on top
-    renderer_render_neurons(renderer, network);
+    renderer_render_neurons(renderer, network, state);
 }
 
-void renderer_render_neurons(const Renderer &renderer, const Network &network) {
+void renderer_render_neurons(const Renderer &renderer, const Network &network, const State &state) {
     // Get viewport dimensions
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
@@ -327,8 +331,14 @@ void renderer_render_neurons(const Renderer &renderer, const Network &network) {
     float height = static_cast<float>(viewport[3]);
 
     glUseProgram(renderer.neuron_program);
+
     GLint viewport_loc = glGetUniformLocation(renderer.neuron_program, "viewport");
+    GLint active_loc = glGetUniformLocation(renderer.neuron_program, "active_color");
+    GLint inactive_loc = glGetUniformLocation(renderer.neuron_program, "inactive_color");
+
     glUniform2f(viewport_loc, width, height);
+    glUniform4fv(active_loc, 1, state.neuron_color.active);
+    glUniform4fv(inactive_loc, 1, state.neuron_color.inactive);
 
     glBindVertexArray(renderer.neuron_vao);
     glBindBuffer(GL_ARRAY_BUFFER, network.neuron_buffer);
@@ -352,7 +362,7 @@ void renderer_render_neurons(const Renderer &renderer, const Network &network) {
     glDisable(GL_BLEND);
 }
 
-void renderer_render_synapses(const Renderer &renderer, const Network &network) {
+void renderer_render_synapses(const Renderer &renderer, const Network &network, const State &state) {
     // Get viewport dimensions
     GLint viewport[4];
     glGetIntegerv(GL_VIEWPORT, viewport);
@@ -361,7 +371,12 @@ void renderer_render_synapses(const Renderer &renderer, const Network &network) 
 
     glUseProgram(renderer.synapse_program);
     GLint viewport_loc = glGetUniformLocation(renderer.synapse_program, "viewport");
+    GLint active_loc = glGetUniformLocation(renderer.synapse_program, "active_color");
+    GLint inactive_loc = glGetUniformLocation(renderer.synapse_program, "inactive_color");
+
     glUniform2f(viewport_loc, width, height);
+    glUniform4fv(active_loc, 1, state.synapse_color.active);
+    glUniform4fv(inactive_loc, 1, state.synapse_color.inactive);
 
     glBindVertexArray(renderer.synapse_vao);
 

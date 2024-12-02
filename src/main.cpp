@@ -4,22 +4,19 @@
 #include "imgui_impl_opengl3.h"
 #include "neural_net.hpp"
 #include "renderer.hpp"
+#include "state.hpp"
 
 #include <GLFW/glfw3.h>
-#include <cstdlib>
-#include <cstring>
 #include <glad/glad.h>
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 void process_input(GLFWwindow *window);
 
-static struct {
-    bool paused = false;
-    struct {
-        f32 active[4] = {0};
-        f32 inactive[4] = {0};
-    } neuron_color, synapse_color;
-} state;
+static State state = {
+    .paused = false,
+    .neuron_color = {.active = {1.0, 1.0, 1.0, 1.0}, .inactive = {0.1, 0.1, 0.2, 1.0}},
+    .synapse_color = {.active = {0.0, 0.5, 0.0, 0.5}, .inactive = {0.5, 0.0, 0.0, 0.5}},
+};
 
 int main() {
     if (!glfwInit()) {
@@ -105,17 +102,18 @@ int main() {
         }
 
         static bool show_colors = false;
-        if (ImGui::Button("Color Settings")) {
-            show_colors = !show_colors;
-        }
+        // if (ImGui::Button("Color Settings")) {
+        //     show_colors = !show_colors;
+        // }
 
-        if (show_colors) {
-            ImGui::Begin("Colors", &show_colors);
+        // if (show_colors) {
+        if (ImGui::CollapsingHeader("Color Settings")) {
+            // ImGui::Begin("Colors", &show_colors);
             ImGui::ColorEdit4("Active Neuron", state.neuron_color.active);
             ImGui::ColorEdit4("Inactive Neuron", state.neuron_color.inactive);
             ImGui::ColorEdit4("Active Synapse", state.synapse_color.active);
             ImGui::ColorEdit4("Inactive Synapse", state.synapse_color.inactive);
-            ImGui::End();
+            // ImGui::End();
         }
 
         ImGui::End();
@@ -126,7 +124,7 @@ int main() {
         process_input(window);
 
         glClear(GL_COLOR_BUFFER_BIT);
-        renderer_render(renderer, network);
+        renderer_render(renderer, network, state);
 
         // Render imgui
         ImGui::Render();
