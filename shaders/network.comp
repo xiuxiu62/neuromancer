@@ -1,0 +1,42 @@
+#version 430
+
+layout(local_size_x = 256) in;
+
+layout(std430, binding = 0) buffer NeuronData {
+  vec4 neurons[]; // x,y = position, z = activation, w = threshold
+};
+
+layout(std430, binding = 1) buffer SynapseData {
+  int synapses[];
+};
+
+layout(std430, binding = 2) buffer WeightData {
+  float weights[]; 
+};
+
+uniform float delta_t;
+
+void main() {
+  uint neuronId = gl_GlobalInvocationID.x;
+  if (neuronId >= neurons.length()) return;
+
+  // Get current neuron data
+  vec4 neuron = neurons[neuronId];
+  float activation = neuron.z;
+  float threshold = neuron.w;
+
+  // Sum inputs from connected neurons
+  float input_sum = 0.0;
+  uint synapse_offset = neuronId * 16;  // MAX_SYNAPSES
+
+  // Update activation
+  if (input_sum > threshold) {
+    activation = 1.0;
+  } else {
+    // activation *= 0.95;  // Decay
+    activation *= 0.9;  // Decay
+  }
+
+  // Store updated activation
+  neurons[neuronId].z = activation;
+}

@@ -58,7 +58,7 @@ int main() {
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
-    const char *data = file_read_to_string("example.xiu");
+    // const char *data = file_read_to_string("example.xiu");
 
     Network network;
     // const auto temp = network_deserialize(network, (u8 *)data, strlen(data));

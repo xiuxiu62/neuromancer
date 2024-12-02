@@ -157,8 +157,8 @@ void main() {
 }
 )";
 
-void create_framebuffers(Renderer &renderer, usize width, usize height) {
-}
+// void create_framebuffers(Renderer &renderer, usize width, usize height) {
+// }
 
 void renderer_render_synapses(const Renderer &renderer, const Network &network);
 void renderer_render_neurons(const Renderer &renderer, const Network &network);
