@@ -1,11 +1,6 @@
 #pragma once
 
-#include "core/logger.h"
 #include "core/types.h"
-#include "shader.hpp"
-
-#include <cmath>
-#include <cstdlib>
 
 #define MAX_NEURONS 2048
 #define MAX_SYNAPSES 16
@@ -13,7 +8,7 @@
 struct Network {
     GLuint program;
     GLuint neuron_buffer;
-    GLuint synapse_buffer;
+    GLuint connection_buffer;
     GLuint weight_buffer;
 
     f32 *neuron_data;

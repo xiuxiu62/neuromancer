@@ -323,7 +323,7 @@ void renderer_render_synapses(const Renderer &renderer, const Network &network, 
     glBindVertexArray(renderer.synapse_vao);
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, network.neuron_buffer);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, network.synapse_buffer);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, network.connection_buffer);
 
     // Enable blending for transparent lines
     glEnable(GL_BLEND);

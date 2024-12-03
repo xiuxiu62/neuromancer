@@ -1,8 +1,11 @@
 #include "neural_net.hpp"
 
 #include "serialize.hpp"
+#include "shader.hpp"
 
-#include <string.h>
+#include <cmath>
+#include <cstdlib>
+#include <cstring>
 
 const char *compute_shader_source = R"(
 #version 430
@@ -53,14 +56,14 @@ void network_init_remote_resources(Network &net, usize neuron_data_size, usize s
                                    usize weight_data_size) {
     // Create OpenGL buffers
     glGenBuffers(1, &net.neuron_buffer);
-    glGenBuffers(1, &net.synapse_buffer);
+    glGenBuffers(1, &net.connection_buffer);
     glGenBuffers(1, &net.weight_buffer);
 
     // Initialize buffers
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.neuron_buffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, neuron_data_size, net.neuron_data, GL_DYNAMIC_DRAW);
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.synapse_buffer);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.connection_buffer);
     glBufferData(GL_SHADER_STORAGE_BUFFER, synapse_data_size, net.synapse_data, GL_STATIC_DRAW);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, net.weight_buffer);
@@ -198,7 +201,7 @@ void network_update(Network &net, f32 delta_t) {
     // }
 
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, net.neuron_buffer);
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, net.synapse_buffer);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, net.connection_buffer);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, net.weight_buffer);
 
     GLint delta_t_location = glGetUniformLocation(net.program, "delta_t");
